@@ -1,0 +1,21 @@
+[project]
+name = "restaurant-rag"
+version = "0.1.0"
+description = "A RAG chatbot for restaurant menu questions using CSV and PDF menu data."
+requires-python = ">=3.10"
+
+dependencies = [
+    "pypdf",
+    "pandas",
+    "langchain",
+    "langchain-community",
+    "langchain-core",
+    "langchain-text-splitters",
+    "langchain-huggingface",
+    "langchain-chroma",
+    "chromadb",
+    "sentence-transformers",
+    "langchain-groq",
+    "python-dotenv",
+    "streamlit",
+]
