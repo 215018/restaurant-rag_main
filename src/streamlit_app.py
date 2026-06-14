@@ -1,8 +1,31 @@
 # This is the main Streamlit app for the Redi restaurant.
-# It provides a chat interface where users can ask questions about the menu, and it uses the RAG chain to generate answers based on the menu data and the user's query. The app maintains a chat history and displays both user questions and assistant answers in a conversational format.
-# Import necessary libraries and modules for Streamlit and the RAG chain.
+# It provides a chat interface where users can ask questions about the menu.
+# The app uses the RAG chain to generate menu-grounded answers.
+
+from pathlib import Path
+
 import streamlit as st
+
+from chunking import split_documents
+from data_loader import load_all_documents
 from rag_chain import generate_llm_answer
+from vector_store import create_vector_store
+
+
+# Find the main project folder.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+# ChromaDB folder where the vector database is stored.
+CHROMA_DIR = PROJECT_ROOT / "chroma_db"
+
+
+def ensure_vector_store_exists():
+    # If ChromaDB does not exist on Streamlit Cloud, build it automatically.
+    if not CHROMA_DIR.exists() or not any(CHROMA_DIR.iterdir()):
+        documents = load_all_documents()
+        chunks = split_documents(documents)
+        create_vector_store(chunks)
+
 
 # Configure the Streamlit browser page.
 st.set_page_config(
@@ -191,6 +214,7 @@ if question:
             answer = "You're welcome. Thank you for using Redi restaurant menu assistant."
         else:
             with st.spinner("Checking the menu..."):
+                ensure_vector_store_exists()
                 answer = generate_llm_answer(question)
 
         st.markdown(answer)
