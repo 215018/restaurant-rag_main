@@ -51,7 +51,7 @@ def build_prompt(query, intent, filtered_items):
 
     # Create the final instruction prompt for Groq/Llama.
     prompt = f"""
-You are a helpful AI waiter for Swagat Indian Restaurant.
+You are a helpful AI waiter for Redi restaurant.
 
 Answer the customer in clear English.
 
