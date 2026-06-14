@@ -1,4 +1,4 @@
-# Swagat Restaurant RAG Chatbot
+# Redi Restaurant RAG Chatbot
 
 ## Project Goal
 
