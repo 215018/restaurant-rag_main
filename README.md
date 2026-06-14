@@ -2,7 +2,7 @@
 
 ## Project Goal
 
-This project is a Retrieval-Augmented Generation (RAG) chatbot for Swagat Indian Restaurant.
+This project is a Retrieval-Augmented Generation (RAG) chatbot for Redi Restaurant.
 
 The chatbot helps customers ask questions about the restaurant menu. Customers can ask about dish prices, ingredients, allergens, vegetarian options, vegan options, lunch menu items, drinks, and food preferences.
 
