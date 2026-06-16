@@ -296,66 +296,6 @@ By combining cleaned menu data, embeddings, ChromaDB retrieval, structured filte
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-Ask for approval
-
-5.5Medium
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Outputsswagat-menu-assistant-website-demo.pptx
-swagat-menu-assistant-interactive-demo.pptx
-swagat-menu-assistant-demo-slides.pptx
-localhost:8501
-
-
-
-Sources
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     To pick up a draggable item, press the space bar.
     While dragging, use the arrow keys to move the item.
     Press space again to drop the item in its new position, or press escape to cancel.
