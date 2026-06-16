@@ -97,46 +97,37 @@ Write a friendly answer with:
 """
     return prompt
 
-
 def generate_llm_answer(query):
     # Retrieve matching menu items using retriever.py.
-    # top_k=100 gives the retriever enough chunks to find good matches.
     intent, filtered_items = retrieve_filtered_items(query, top_k=100)
 
-    # Send only the best 5 items to the LLM to avoid Groq token limit errors.
-    filtered_items = filtered_items[:5]
-
-    # If no egg-based dish is found, return a direct safe answer.
-    # This prevents the LLM from inventing egg dishes or suggesting chicken.
-    if not filtered_items and intent.get("require_egg"):
+    # Stop immediately for egg-dish requests.
+    # The menu does not contain egg-based dishes, so we do not send alternatives to the LLM.
+    if intent.get("require_egg"):
         return (
             "I could not find any egg-based dishes on the menu. "
             "Please confirm with the restaurant if you are looking for egg-based items."
         )
 
-    # If no matching items were found for other requests, return a safe fallback message.
+    # Send only the best 5 items to the LLM to avoid Groq token limit errors.
+    filtered_items = filtered_items[:5]
+
     if not filtered_items:
         return (
             "I could not find a matching menu item. "
             "Please contact the restaurant directly, especially for allergy-sensitive requests."
         )
 
-    # Build the prompt using the customer query and filtered menu items.
     prompt = build_prompt(query, intent, filtered_items)
 
-    # Create the Groq LLM client.
-    # Groq is the API provider, and llama-3.1-8b-instant is the model.
     llm = ChatGroq(
         model="llama-3.1-8b-instant",
         temperature=0.2,
     )
 
-    # Send the prompt to the LLM.
     response = llm.invoke(prompt)
 
-    # Return the generated answer text.
     return response.content
-
 
 def main():
     # Example question for testing.
