@@ -20,6 +20,7 @@ The objective of this project is to build an AI-powered restaurant assistant tha
 - Explain allergen information when available
 - Support vegetarian and vegan preferences
 - Handle food categories such as chicken, fish, lamb, salad, drinks, beer, rice, soup, and bread
+- Check whether requested menu items are actually available
 - Generate menu-grounded answers using RAG
 
 ## What Is RAG?
@@ -171,6 +172,7 @@ The RAG chain:
 Receives the customer question
 Calls the retriever
 Gets filtered menu items
+Checks direct availability questions
 Builds a safe prompt
 Sends menu context to Groq/Llama
 Returns a customer-friendly answer
@@ -179,7 +181,6 @@ Returns a customer-friendly answer
 File:
 src/streamlit_app.py
 The Streamlit app provides the web interface.
-
 Features:
 Chat interface
 Chat history
@@ -188,6 +189,36 @@ Sidebar
 Clear chat button
 Friendly AI waiter responses
 Automatic vector store creation when needed
+
+Availability Checking
+The chatbot includes automatic availability checking for direct menu questions.
+
+For example, if a customer asks:
+Do you have pizza?
+the system does not return similar items such as naan or bread. Instead, it checks whether the requested item actually exists in the retrieved menu results.
+If the item is not found, the chatbot returns:
+I could not find pizza on the menu.
+
+Examples:
+Do you have pizza?  -> Not found
+Do you have burger? -> Not found
+Do you have sushi?  -> Not found
+Do you have beef?   -> Not found
+Do you have fish?   -> Returns fish dishes
+Do you have salad?  -> Returns salad items
+Do you have beer?   -> Returns beer options
+
+This check is only applied to direct availability questions such as:
+Do you have...?
+Is there...?
+Are there...?
+
+It is not applied to recommendation or preference questions such as:
+I want mild chicken under 12 euros.
+Show me vegetarian lunch menu items.
+I am allergic to milk. What can I eat?
+
+Those questions are handled by the normal RAG retrieval and structured filtering pipeline.
 
 Example Questions
 I want mild chicken under 12 euros and no nuts.
@@ -247,10 +278,84 @@ Allergy-aware responses
 Budget-aware recommendations
 Vegetarian and vegan support
 Drink and beer detection
+Automatic availability checking for unavailable menu items
 PDF fallback for missing menu information
 Streamlit web interface
 
 Summary
 This project demonstrates how Retrieval-Augmented Generation can be used to build a practical restaurant AI assistant.
 By combining cleaned menu data, embeddings, ChromaDB retrieval, structured filtering, Groq/Llama, and Streamlit, the chatbot can answer customer questions in a reliable and menu-grounded way.
+```
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ask for approval
+
+5.5Medium
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Outputsswagat-menu-assistant-website-demo.pptx
+swagat-menu-assistant-interactive-demo.pptx
+swagat-menu-assistant-demo-slides.pptx
+localhost:8501
+
+
+
+Sources
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    To pick up a draggable item, press the space bar.
+    While dragging, use the arrow keys to move the item.
+    Press space again to drop the item in its new position, or press escape to cancel.
