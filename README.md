@@ -286,16 +286,3 @@ Summary
 This project demonstrates how Retrieval-Augmented Generation can be used to build a practical restaurant AI assistant.
 By combining cleaned menu data, embeddings, ChromaDB retrieval, structured filtering, Groq/Llama, and Streamlit, the chatbot can answer customer questions in a reliable and menu-grounded way.
 ```
-
-
-
-
-
-
-
-
-
-
-    To pick up a draggable item, press the space bar.
-    While dragging, use the arrow keys to move the item.
-    Press space again to drop the item in its new position, or press escape to cancel.
