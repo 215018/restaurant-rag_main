@@ -5,8 +5,10 @@
 # 3. Generate a friendly customer answer in English.
 
 from pathlib import Path
+
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
+
 from retriever import describe_spice_safety, retrieve_filtered_items
 
 
@@ -19,8 +21,10 @@ ENV_PATH = PROJECT_ROOT / ".env"
 # Load the Groq API key from the .env file.
 load_dotenv(ENV_PATH)
 
-# Format the filtered menu items into a text block for the LLM prompt.
+
 def format_items_for_prompt(filtered_items, intent):
+    # Format the filtered menu items into a text block for the LLM prompt.
+
     # Store formatted menu item text blocks here.
     item_blocks = []
 
@@ -44,8 +48,13 @@ Spice note: {spice_note}
     # Join all item blocks into one prompt context.
     return "\n".join(item_blocks)
 
-# Build the final prompt for the LLM using the customer query, extracted intent, and filtered menu items.
+
 def build_prompt(query, intent, filtered_items):
+    # Build the final prompt for the LLM using:
+    # 1. Customer question
+    # 2. Extracted intent
+    # 3. Filtered menu items
+
     # Convert filtered menu items into text for the LLM.
     menu_context = format_items_for_prompt(filtered_items, intent)
 
@@ -88,16 +97,24 @@ Write a friendly answer with:
 """
     return prompt
 
-# Retrieve matching menu items. Then build the prompt and generate the final customer-friendly answer using the Groq LLM.
+
 def generate_llm_answer(query):
-    # Retrieve matching menu items.
-    # top_k=40 keeps retrieval useful but avoids sending too much context.
+    # Retrieve matching menu items using retriever.py.
+    # top_k=100 gives the retriever enough chunks to find good matches.
     intent, filtered_items = retrieve_filtered_items(query, top_k=100)
 
     # Send only the best 5 items to the LLM to avoid Groq token limit errors.
     filtered_items = filtered_items[:5]
 
-    # If no matching items were found, return a safe fallback message.
+    # If no egg-based dish is found, return a direct safe answer.
+    # This prevents the LLM from inventing egg dishes or suggesting chicken.
+    if not filtered_items and intent.get("require_egg"):
+        return (
+            "I could not find any egg-based dishes on the menu. "
+            "Please confirm with the restaurant if you are looking for egg-based items."
+        )
+
+    # If no matching items were found for other requests, return a safe fallback message.
     if not filtered_items:
         return (
             "I could not find a matching menu item. "
@@ -108,6 +125,7 @@ def generate_llm_answer(query):
     prompt = build_prompt(query, intent, filtered_items)
 
     # Create the Groq LLM client.
+    # Groq is the API provider, and llama-3.1-8b-instant is the model.
     llm = ChatGroq(
         model="llama-3.1-8b-instant",
         temperature=0.2,
@@ -119,10 +137,10 @@ def generate_llm_answer(query):
     # Return the generated answer text.
     return response.content
 
-# Main function to test the RAG chain with an example customer query.
+
 def main():
     # Example question for testing.
-    query = "I want to eat Fish"
+    query = "Do you have egg dishes?"
 
     # Generate and print the final customer-friendly answer.
     answer = generate_llm_answer(query)

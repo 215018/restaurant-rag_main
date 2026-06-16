@@ -3,19 +3,24 @@
 # If CSV has no matching item, it falls back to PDF chunks only for non-strict menu questions.
 
 from pathlib import Path
+
 from langchain_chroma import Chroma
+
 from embeddings import get_embedding_model
 
 
+# Go up from src/retriever.py to the main project folder.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+# Folder where ChromaDB stores the vector database.
 CHROMA_DIR = PROJECT_ROOT / "chroma_db"
 
 
 def load_vector_store():
-    # Load the same Hugging Face embedding model used to create Chroma.
+    # Load the same Hugging Face embedding model used when creating ChromaDB.
     embedding_model = get_embedding_model()
 
-    # Load the existing Chroma vector database.
+    # Load the existing Chroma vector database from disk.
     vector_store = Chroma(
         persist_directory=str(CHROMA_DIR),
         embedding_function=embedding_model,
@@ -25,7 +30,8 @@ def load_vector_store():
 
 
 def expand_query_for_retrieval(query):
-    # Add extra English/German menu words to improve retrieval from CSV and PDF.
+    # Add related English and German words to improve retrieval.
+    # Example: "beer" also searches for "bier", "kingfisher", and "hefeweizen".
     text = query.lower()
     extra_words = []
 
@@ -41,8 +47,13 @@ def expand_query_for_retrieval(query):
     if "shrimp" in text or "prawn" in text or "garnelen" in text:
         extra_words.append("shrimp prawn garnelen")
 
+    if "egg" in text or "ei" in text:
+        extra_words.append("egg ei egg dishes")
+
     if "salad" in text or "salat" in text:
-        extra_words.append("salad salat gemischter salat chicken tikka salat paneer tikka salat salat der saison")
+        extra_words.append(
+            "salad salat gemischter salat chicken tikka salat paneer tikka salat salat der saison"
+        )
 
     if "soup" in text or "suppe" in text or "shorba" in text:
         extra_words.append("soup suppe shorba")
@@ -66,13 +77,13 @@ def expand_query_for_retrieval(query):
 
 
 def retrieve_relevant_chunks(query, top_k=100):
-    # Expand the query before searching Chroma.
+    # Expand the query before searching ChromaDB.
     expanded_query = expand_query_for_retrieval(query)
 
-    # Load Chroma vector database.
+    # Load ChromaDB.
     vector_store = load_vector_store()
 
-    # Search for the most relevant chunks.
+    # Search for the most relevant menu chunks.
     results = vector_store.similarity_search(
         expanded_query,
         k=top_k,
@@ -82,14 +93,14 @@ def retrieve_relevant_chunks(query, top_k=100):
 
 
 def parse_bool(value):
-    # Convert true/false text into Python boolean.
+    # Convert text like "true" or "false" into a Python boolean.
     text = str(value).strip().lower()
-
     return text == "true"
 
 
 def parse_price(value):
-    # Convert price text into a number.
+    # Convert price text into a float.
+    # Example: "11,90" becomes 11.90.
     try:
         return float(str(value).replace(",", ".").strip())
     except (TypeError, ValueError):
@@ -97,7 +108,11 @@ def parse_price(value):
 
 
 def document_to_item(doc):
-    # Convert LangChain CSV Document text into a Python dictionary.
+    # Convert one CSV LangChain Document into a Python dictionary.
+    # Example document text:
+    # name: Butter Chicken
+    # price: 11.9
+    # allergen_names: milk_lactose
     item = {}
 
     for line in doc.page_content.splitlines():
@@ -109,7 +124,7 @@ def document_to_item(doc):
 
 
 def extract_matching_pdf_line(page_content, query):
-    # Find the most relevant line from the PDF chunk.
+    # Find the most relevant line from a PDF chunk.
     query_text = query.lower()
 
     if "salad" in query_text or "salat" in query_text:
@@ -144,16 +159,18 @@ def extract_matching_pdf_line(page_content, query):
 
 
 def clean_pdf_item_name(name):
-    # Remove menu numbers like "5." or "8." from the beginning.
+    # Clean item names extracted from PDF text.
     name = name.strip()
 
+    # Remove menu numbers like "5. Gemischter Salat".
     if ". " in name:
         first_part, rest = name.split(". ", 1)
 
         if first_part.isdigit():
             name = rest.strip()
 
-    # Remove price at the end, like "6,00" or "10,80".
+    # Remove price at the end.
+    # Example: "Gemischter Salat 6,00" becomes "Gemischter Salat".
     parts = name.split()
 
     if parts:
@@ -166,7 +183,8 @@ def clean_pdf_item_name(name):
 
 
 def extract_pdf_price(text):
-    # Extract price from PDF line, like "6,00" or "10,80".
+    # Extract price from a PDF line.
+    # Example: "Gemischter Salat 6,00" becomes "6.00".
     parts = text.strip().split()
 
     if not parts:
@@ -181,7 +199,7 @@ def extract_pdf_price(text):
 
 
 def translate_pdf_description(text):
-    # Simple English descriptions for common PDF fallback lines.
+    # Create simple English descriptions for PDF fallback items.
     lower_text = text.lower()
 
     if "gemischter salat" in lower_text:
@@ -215,7 +233,7 @@ def translate_pdf_description(text):
 
 
 def is_clean_pdf_item_name(name):
-    # Reject messy PDF chunks that contain multiple menu lines.
+    # Reject messy PDF chunks that contain many menu items together.
     if not name:
         return False
 
@@ -240,14 +258,11 @@ def is_clean_pdf_item_name(name):
 
 
 def pdf_document_to_item(doc, query):
-    # Extract a relevant line from the PDF chunk.
+    # Convert one PDF chunk into a menu-item-like dictionary.
     matched_text = extract_matching_pdf_line(doc.page_content, query)
 
-    # Clean the item name and extract price separately.
     name = clean_pdf_item_name(matched_text[:80])
     price = extract_pdf_price(matched_text)
-
-    # Translate or summarize the PDF line in English.
     english_description = translate_pdf_description(matched_text)
 
     return {
@@ -262,6 +277,7 @@ def pdf_document_to_item(doc, query):
 
 
 def extract_user_intent(query):
+    # Extract structured meaning from the customer question.
     text = query.lower()
 
     intent = {
@@ -272,6 +288,7 @@ def extract_user_intent(query):
         "require_duck": False,
         "require_shrimp": False,
         "require_paneer": False,
+        "require_egg": False,
         "require_salad": False,
         "require_soup": False,
         "require_bread": False,
@@ -288,6 +305,7 @@ def extract_user_intent(query):
         "taste": None,
     }
 
+    # Extract budget.
     words = text.replace("€", " euros").split()
 
     for index, word in enumerate(words):
@@ -299,6 +317,10 @@ def extract_user_intent(query):
                 except ValueError:
                     continue
 
+    # Detect allergy-related words.
+    allergy_signals = ["no", "avoid", "allergic", "allergy", "without"]
+
+    # Extract food preferences.
     if "chicken" in text:
         intent["require_chicken"] = True
 
@@ -316,6 +338,13 @@ def extract_user_intent(query):
 
     if "paneer" in text:
         intent["require_paneer"] = True
+
+    # Egg can mean two different things:
+    # 1. "Do you have egg dishes?" means the user wants egg.
+    # 2. "I am allergic to egg" means the user wants to avoid egg.
+    # So we only set require_egg when the sentence is not an allergy/avoidance request.
+    if ("egg" in text or "ei" in text) and not any(signal in text for signal in allergy_signals):
+        intent["require_egg"] = True
 
     if "salad" in text or "salat" in text:
         intent["require_salad"] = True
@@ -335,6 +364,7 @@ def extract_user_intent(query):
     if "dessert" in text or "sweet" in text or "sweets" in text:
         intent["require_dessert"] = True
 
+    # Extract dietary preferences.
     if "vegetarian" in text or "veg" in text:
         intent["require_vegetarian"] = True
 
@@ -344,9 +374,11 @@ def extract_user_intent(query):
     if "lunch" in text or "mittag" in text or "mittagsmenü" in text:
         intent["require_lunch_menu"] = True
 
+    # If the user asks to eat food, remove drinks unless the user asks for drinks.
     if "eat" in text or "food" in text or "dish" in text or "meal" in text:
         intent["exclude_drinks"] = True
 
+    # Detect drink questions.
     if (
         "drink" in text
         or "drinks" in text
@@ -359,15 +391,18 @@ def extract_user_intent(query):
     ):
         intent["meal_type"] = "drink"
 
+    # Detect beer specifically.
     if "beer" in text or "bier" in text or "kingfisher" in text or "hefeweizen" in text:
         intent["require_beer"] = True
 
+    # Detect starter/main meal type.
     if "starter" in text or "appetizer" in text or "pakora" in text:
         intent["meal_type"] = "starter"
 
     if "main" in text or "main dish" in text or "meal" in text:
         intent["meal_type"] = "main"
 
+    # Map allergy words to normalized allergen names.
     allergen_keywords = {
         "nuts": "nuts",
         "nut": "nuts",
@@ -381,13 +416,12 @@ def extract_user_intent(query):
         "mustard": "mustard",
     }
 
-    allergy_signals = ["no", "avoid", "allergic", "allergy", "without"]
-
     for keyword, allergen_name in allergen_keywords.items():
         if keyword in text and any(signal in text for signal in allergy_signals):
             if allergen_name not in intent["avoid_allergens"]:
                 intent["avoid_allergens"].append(allergen_name)
 
+    # Extract spice preference.
     if "mild" in text or "not spicy" in text:
         intent["taste"] = "mild"
 
@@ -398,6 +432,7 @@ def extract_user_intent(query):
 
 
 def item_contains_avoided_allergen(item, avoid_allergens):
+    # Check if a menu item contains an allergen the user wants to avoid.
     allergen_names = str(item.get("allergen_names", "")).lower()
 
     item_text = " ".join(
@@ -463,12 +498,14 @@ def item_contains_avoided_allergen(item, avoid_allergens):
 
 
 def item_matches_keywords(item, keywords):
+    # Check if an item contains any keyword in important menu fields.
     item_text = " ".join(
         [
             str(item.get("name", "")),
             str(item.get("description_de", "")),
             str(item.get("category", "")),
             str(item.get("meal_type", "")),
+            str(item.get("allergen_names", "")),
         ]
     ).lower()
 
@@ -476,6 +513,7 @@ def item_matches_keywords(item, keywords):
 
 
 def item_is_beer(item):
+    # Special helper for beer questions.
     return item_matches_keywords(item, ["beer", "bier", "kingfisher", "hefeweizen"])
 
 
@@ -488,6 +526,7 @@ def filter_menu_items(
     require_duck=False,
     require_shrimp=False,
     require_paneer=False,
+    require_egg=False,
     require_salad=False,
     require_soup=False,
     require_bread=False,
@@ -502,6 +541,7 @@ def filter_menu_items(
     exclude_drinks=False,
     avoid_allergens=None,
 ):
+    # Apply structured filters to CSV menu items.
     filtered = []
     seen_names = set()
 
@@ -509,16 +549,19 @@ def filter_menu_items(
         avoid_allergens = []
 
     for doc in documents:
+        # Use CSV first because it has structured fields.
         if doc.metadata.get("source_type") != "csv_menu":
             continue
 
         item = document_to_item(doc)
         price = parse_price(item.get("price"))
 
+        # Price filter.
         if max_price is not None:
             if price is None or price > max_price:
                 continue
 
+        # Ingredient filters.
         if require_chicken and not parse_bool(item.get("contains_chicken")):
             continue
 
@@ -537,6 +580,13 @@ def filter_menu_items(
         if require_paneer and not parse_bool(item.get("contains_paneer")):
             continue
 
+        # Egg is not a main ingredient column in the CSV.
+        # So if the user asks for egg dishes, we only keep items that mention egg/ei.
+        # If your restaurant has no egg dishes, this will correctly return no items.
+        if require_egg and not item_matches_keywords(item, ["egg", "ei"]):
+            continue
+
+        # Category keyword filters.
         if require_salad and not item_matches_keywords(item, ["salad", "salat"]):
             continue
 
@@ -552,9 +602,12 @@ def filter_menu_items(
         if require_lassi and not item_matches_keywords(item, ["lassi"]):
             continue
 
-        if require_dessert and not item_matches_keywords(item, ["dessert", "sweet", "mango cream", "gulab"]):
+        if require_dessert and not item_matches_keywords(
+            item, ["dessert", "sweet", "mango cream", "gulab"]
+        ):
             continue
 
+        # Dietary filters.
         if require_vegetarian and not parse_bool(item.get("is_vegetarian")):
             continue
 
@@ -564,20 +617,25 @@ def filter_menu_items(
         if require_lunch_menu and not parse_bool(item.get("is_lunch_menu")):
             continue
 
+        # Meal type filter.
         if meal_type is not None:
             if item.get("meal_type", "").lower() != meal_type:
                 continue
 
+        # If user wants food, remove drinks.
         if exclude_drinks:
             if item.get("meal_type", "").lower() == "drink":
                 continue
 
+        # Beer filter.
         if require_beer and not item_is_beer(item):
             continue
 
+        # Allergy safety filter.
         if item_contains_avoided_allergen(item, avoid_allergens):
             continue
 
+        # Remove duplicate item names.
         name = item.get("name")
 
         if name in seen_names:
@@ -586,10 +644,12 @@ def filter_menu_items(
         seen_names.add(name)
         filtered.append(item)
 
+    # Keep prompt small for the LLM.
     return filtered[:5]
 
 
 def describe_spice_safety(item, taste):
+    # Create a warning if the user asks for mild food but the description sounds spicy.
     description = item.get("description_de", "").lower()
     meal_type = item.get("meal_type", "").lower()
 
@@ -608,6 +668,9 @@ def describe_spice_safety(item, taste):
 
 
 def retrieve_filtered_items(query, top_k=100):
+    # Main function used by rag_chain.py.
+    # It retrieves menu chunks, extracts intent, filters CSV rows,
+    # and falls back to PDF only when the request is not strict.
     intent = extract_user_intent(query)
 
     retrieved_docs = retrieve_relevant_chunks(query, top_k=top_k)
@@ -621,6 +684,7 @@ def retrieve_filtered_items(query, top_k=100):
         require_duck=intent["require_duck"],
         require_shrimp=intent["require_shrimp"],
         require_paneer=intent["require_paneer"],
+        require_egg=intent["require_egg"],
         require_salad=intent["require_salad"],
         require_soup=intent["require_soup"],
         require_bread=intent["require_bread"],
@@ -636,9 +700,12 @@ def retrieve_filtered_items(query, top_k=100):
         avoid_allergens=intent["avoid_allergens"],
     )
 
+    # If CSV found matching items, return them.
     if filtered_items:
         return intent, filtered_items
 
+    # If the user asked for strict filters, do not use PDF fallback.
+    # This prevents wrong answers like showing chicken for "egg dishes".
     strict_filter_used = (
         intent["max_price"] is not None
         or intent["avoid_allergens"]
@@ -651,12 +718,15 @@ def retrieve_filtered_items(query, top_k=100):
         or intent["require_duck"]
         or intent["require_shrimp"]
         or intent["require_paneer"]
+        or intent["require_egg"]
         or intent["require_beer"]
     )
 
     if strict_filter_used:
         return intent, []
 
+    # PDF fallback is only for non-strict category questions.
+    # Example: "Do you have any salad?"
     pdf_items = []
     seen_pdf_names = set()
 
@@ -684,7 +754,8 @@ def retrieve_filtered_items(query, top_k=100):
 
 
 def main():
-    query = "Do you have any salad?"
+    # Test this file directly.
+    query = "Do you have egg dishes?"
 
     intent, filtered_items = retrieve_filtered_items(query, top_k=100)
 
@@ -715,11 +786,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-# I chunked the PDF because the CSV does not contain every menu detail. The CSV is used first because it is structured and safer for price, allergy, vegetarian, vegan, and meal-type filtering. However, when the CSV does not contain enough information, the system uses chunked PDF text as a fallback. This improves coverage while still keeping safety warnings for unclear allergens or prices.
-# CSV is for accuracy. PDF is for coverage.
-
-# Retrieval is used because the LLM should not answer from memory. The chatbot first retrieves relevant menu information from the restaurant CSV/PDF, then the LLM generates an answer based only on that retrieved context. This reduces hallucination and helps provide accurate dish names, prices, allergens, and dietary information.
