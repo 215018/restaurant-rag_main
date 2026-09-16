@@ -1,10 +1,12 @@
 # Redi Restaurant Menu Assistant
 
-A restaurant menu chatbot built with **Retrieval-Augmented Generation (RAG)**.
+## Project Overview
 
-The system helps customers ask natural language questions about menu items, prices, allergens, vegetarian options, vegan options, drinks, lunch menu items, and food recommendations.
+The ReDI Restaurant Menu Assistant is a RAG-powered chatbot that provides accurate, menu-grounded answers about dishes, prices, allergens, dietary preferences, and food recommendations.
 
-This project uses structured CSV menu data, PDF menu information, ChromaDB retrieval, Hugging Face embeddings, Groq/Llama, and Streamlit.
+It combines structured CSV data, PDF menu documents, ChromaDB vector search, Hugging Face embeddings, Groq-hosted language models, and a Streamlit interface. Key features include allergy-aware responses, vegetarian and vegan filtering, budget-based recommendations, and menu availability checks.
+
+The project uses GitLab CI/CD to validate each code change, synchronize successful builds with GitHub, and automatically trigger deployment on Streamlit Community Cloud.
 
 ## Live Demo
 
