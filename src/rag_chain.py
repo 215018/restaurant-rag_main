@@ -280,7 +280,7 @@ def generate_llm_answer(query):
     # Create the Groq LLM client.
     # Groq is the API provider, and llama-3.1-8b-instant is the model.
     llm = ChatGroq(
-        model="llama-3.1-8b-instant",
+        model="openai/gpt-oss-20b",
         temperature=0.2,
     )
 
