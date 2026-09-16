@@ -1,18 +1,9 @@
 stages:
   - test
 
-default:
-  image: python:3.12-slim
-
-variables:
-  UV_CACHE_DIR: "$CI_PROJECT_DIR/.uv-cache"
-
-cache:
-  paths:
-    - .uv-cache/
-
-test-application:
+test_application:
   stage: test
+  image: python:3.12-slim
   before_script:
     - pip install uv
     - uv sync --frozen
